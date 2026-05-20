@@ -16,6 +16,7 @@ type Model = {
   creator: string;
   license: string;
   sourceUrl: string;
+  sourceLabel?: string; // override for credit link text
   tech: "GLB" | "Splat" | "Pendiente";
   splatRotation?: [number, number, number];
   cameraStart?: { position: [number, number, number]; lookAt: [number, number, number] };
@@ -39,26 +40,27 @@ const INDUSTRIES: Industry[] = [
     emoji: "🏠",
     label: "Inmobiliaria",
     pitch:
-      "Tours volumétricos de propiedades reales. Tu cliente captura la casa con su celular (Luma AI / Polycam) y Vista3D la sirve como un link que el comprador recorre desde su sala.",
+      "Tours volumétricos de propiedades reales. El agente captura la propiedad con su celular (Luma AI / Polycam) y Vista3D la sirve como un link que el comprador recorre desde su sala.",
     models: [
       {
-        id: "inm-placeholder",
-        label: "Próximamente — tu primera propiedad",
-        category: "Captura real · Splat del cliente",
-        src: null,
-        size: "—",
+        id: "inm-apartment",
+        label: "Apartamento · Escaneo 3D Gaussian Splat",
+        category: "Inmueble · Captura real 3DGS",
+        src: "https://raw.githubusercontent.com/playcanvas/engine/main/examples/assets/splats/apartment.sog",
+        size: "SOG comprimido",
         description:
-          "Inmobiliaria es el caso de uso donde Vista3D aporta más valor: cada propiedad es única y se captura como Gaussian Splat real. Aquí va el primer splat capturado por ti o por uno de tus clientes inmobiliarios. Hasta entonces, esta vertical queda como placeholder honesto.",
+          "Captura Gaussian Splat real de un apartamento interior. Cada habitación, textura y juego de luces está reconstruido fotograméticamente desde video — el comprador puede explorar el espacio como si estuviera ahí. Así es como Vista3D transforma la venta inmobiliaria.",
         features: [
-          "Captura con celular (~10 min)",
-          "Procesa en la nube de Luma AI",
-          "Sube el .ply a Vista3D",
-          "Comparte link público",
+          "Cada rincón explorable en 360°",
+          "Iluminación y texturas fotorrealistas",
+          "Sin app — abre en cualquier navegador",
+          "Link compartible en WhatsApp o portal",
         ],
-        creator: "Tú (próximamente)",
-        license: "Tu propiedad",
-        sourceUrl: "/",
-        tech: "Pendiente",
+        creator: "Stéphane Agullo / SA3D",
+        license: "CC BY 4.0",
+        sourceUrl: "https://sa3d.fr",
+        sourceLabel: "Fuente: SA3D · sa3d.fr ↗",
+        tech: "Splat",
       },
     ],
   },
@@ -390,7 +392,7 @@ export default function DemoPage() {
                   rel="noopener noreferrer"
                   className="text-white/50 hover:text-white/80 underline underline-offset-2"
                 >
-                  Fuente Khronos glTF Sample Assets ↗
+                  {model.sourceLabel ?? "Fuente Khronos glTF Sample Assets ↗"}
                 </a>
               </div>
             )}
