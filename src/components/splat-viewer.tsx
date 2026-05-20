@@ -8,13 +8,21 @@ export type SplatViewerProps = {
   src: string;
   className?: string;
   clearColor?: [number, number, number];
-  /** Rotation (euler degrees) applied to the splat. Many real-world captures need a 180° Z flip. */
+  /** Rotation (euler degrees) applied to the loaded asset. Real-world splats often need a 180° Z flip. */
   splatRotation?: [number, number, number];
-  /** Optional fixed initial camera position. When omitted, camera auto-frames the splat AABB. */
+  /** Optional fixed initial camera position. When omitted, camera auto-frames the model AABB. */
   cameraStart?: { position: [number, number, number]; lookAt: [number, number, number] };
 };
 
 const DEFAULT_CLEAR: [number, number, number] = [0.04, 0.04, 0.04];
+
+type AssetKind = "gsplat" | "container";
+
+const detectKind = (src: string): AssetKind => {
+  const lower = src.toLowerCase().split(/[?#]/)[0];
+  if (lower.endsWith(".glb") || lower.endsWith(".gltf")) return "container";
+  return "gsplat";
+};
 
 export default function SplatViewer({
   src,
@@ -42,6 +50,7 @@ export default function SplatViewer({
     let app: pc.AppBase | null = null;
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
+    const kind = detectKind(src);
 
     (async () => {
       try {
@@ -62,6 +71,8 @@ export default function SplatViewer({
         createOptions.keyboard = new pc.Keyboard(window);
         createOptions.componentSystems = [
           pc.CameraComponentSystem,
+          pc.LightComponentSystem,
+          pc.RenderComponentSystem,
           pc.ScriptComponentSystem,
           pc.GSplatComponentSystem,
         ];
@@ -95,6 +106,46 @@ export default function SplatViewer({
         cameraEntity.lookAt(0, 0, 0);
         app.root.addChild(cameraEntity);
 
+        // ---- Lighting (only needed for GLB / mesh content; gsplats carry their own color) ----
+        if (kind === "container") {
+          const keyLight = new pc.Entity("key-light");
+          keyLight.addComponent("light", {
+            type: "directional",
+            color: new pc.Color(1, 1, 1),
+            intensity: 1.4,
+            castShadows: true,
+            shadowBias: 0.2,
+            normalOffsetBias: 0.05,
+            shadowDistance: 50,
+            shadowResolution: 2048,
+          });
+          keyLight.setLocalEulerAngles(45, 30, 0);
+          app.root.addChild(keyLight);
+
+          const fillLight = new pc.Entity("fill-light");
+          fillLight.addComponent("light", {
+            type: "directional",
+            color: new pc.Color(0.9, 0.95, 1),
+            intensity: 0.45,
+            castShadows: false,
+          });
+          fillLight.setLocalEulerAngles(-30, -120, 0);
+          app.root.addChild(fillLight);
+
+          const ambient = new pc.Entity("ambient-light");
+          ambient.addComponent("light", {
+            type: "directional",
+            color: new pc.Color(0.6, 0.7, 0.9),
+            intensity: 0.25,
+            castShadows: false,
+          });
+          ambient.setLocalEulerAngles(-90, 0, 0);
+          app.root.addChild(ambient);
+
+          // Scene background ambient
+          app.scene.ambientLight = new pc.Color(0.2, 0.22, 0.28);
+        }
+
         // ---- Camera controls (orbit + fly) ----
         cameraEntity.addComponent("script");
         const scriptComp = cameraEntity.script as pc.ScriptComponent;
@@ -112,8 +163,8 @@ export default function SplatViewer({
           ctrl.focusDamping = 0.96;
         }
 
-        // ---- Load splat ----
-        const asset = new pc.Asset("splat", "gsplat", { url: src });
+        // ---- Load asset ----
+        const asset = new pc.Asset(kind === "container" ? "model" : "splat", kind, { url: src });
         asset.on("progress", (received: number, total: number) => {
           if (total > 0) setProgress(received / total);
         });
@@ -122,20 +173,44 @@ export default function SplatViewer({
 
         asset.ready(() => {
           if (!app || cancelled) return;
-          const splat = new pc.Entity("splat");
-          splat.addComponent("gsplat", { asset });
-          if (splatRotation) {
-            splat.setLocalEulerAngles(splatRotation[0], splatRotation[1], splatRotation[2]);
+          const node = new pc.Entity(kind === "container" ? "model" : "splat");
+
+          if (kind === "container") {
+            // Instantiate model hierarchy from GLB
+            const container = asset.resource as pc.ContainerResource;
+            const modelEntity = container.instantiateRenderEntity();
+            node.addChild(modelEntity);
+          } else {
+            node.addComponent("gsplat", { asset });
           }
-          app.root.addChild(splat);
+
+          if (splatRotation) {
+            node.setLocalEulerAngles(splatRotation[0], splatRotation[1], splatRotation[2]);
+          }
+          app.root.addChild(node);
 
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              const gsplatComp = splat.gsplat;
-              const instance = gsplatComp?.instance;
-              const aabb = instance?.meshInstance?.aabb;
+              // Compute AABB for framing
+              let aabb: pc.BoundingBox | null = null;
+              if (kind === "gsplat") {
+                const gsplatComp = (node as unknown as { gsplat?: { instance?: { meshInstance?: { aabb: pc.BoundingBox } } } }).gsplat;
+                aabb = gsplatComp?.instance?.meshInstance?.aabb ?? null;
+              } else {
+                // Aggregate AABB across all render mesh instances
+                const renders: pc.RenderComponent[] = node.findComponents("render") as pc.RenderComponent[];
+                renders.forEach((r) => {
+                  r.meshInstances?.forEach((mi) => {
+                    if (!aabb) {
+                      aabb = mi.aabb.clone();
+                    } else {
+                      aabb.add(mi.aabb);
+                    }
+                  });
+                });
+              }
+
               if (cameraStart) {
-                // Explicit camera position (good for known scenes)
                 cameraEntity.setPosition(
                   cameraStart.position[0],
                   cameraStart.position[1],
@@ -148,9 +223,9 @@ export default function SplatViewer({
                 );
                 const cam = cameraEntity.camera;
                 if (cam && aabb) {
-                  const radius = aabb.halfExtents.length();
-                  cam.nearClip = Math.max(radius * 0.001, 0.01);
-                  cam.farClip = Math.max(radius * 20, 100);
+                  const radius = (aabb as pc.BoundingBox).halfExtents.length();
+                  cam.nearClip = Math.max(radius * 0.001, 0.001);
+                  cam.farClip = Math.max(radius * 50, 100);
                 }
                 if (ctrl) {
                   ctrl.focusPoint = new pc.Vec3(
@@ -160,19 +235,20 @@ export default function SplatViewer({
                   );
                 }
               } else if (aabb) {
-                const center = aabb.center;
-                const radius = aabb.halfExtents.length();
-                const dist = Math.max(radius * 1.4, 3);
+                const a = aabb as pc.BoundingBox;
+                const center = a.center;
+                const radius = a.halfExtents.length();
+                const dist = Math.max(radius * 1.6, 0.5);
                 cameraEntity.setPosition(
                   center.x + dist * 0.6,
-                  center.y + dist * 0.15,
+                  center.y + dist * 0.3,
                   center.z + dist * 0.6
                 );
                 cameraEntity.lookAt(center);
                 const cam = cameraEntity.camera;
                 if (cam) {
-                  cam.nearClip = Math.max(radius * 0.001, 0.01);
-                  cam.farClip = Math.max(radius * 20, 100);
+                  cam.nearClip = Math.max(radius * 0.001, 0.001);
+                  cam.farClip = Math.max(radius * 50, 100);
                 }
                 if (ctrl) {
                   ctrl.focusPoint = center.clone();
@@ -238,7 +314,7 @@ export default function SplatViewer({
             />
           </div>
           <p className="mt-4 text-white/70 text-sm font-mono tabular-nums">
-            Cargando splat… {Math.round(progress * 100)}%
+            Cargando modelo… {Math.round(progress * 100)}%
           </p>
         </div>
       )}
@@ -246,7 +322,7 @@ export default function SplatViewer({
       {errorMsg && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6">
           <div className="max-w-md text-center">
-            <p className="text-red-400 text-sm mb-2">Error al cargar el splat</p>
+            <p className="text-red-400 text-sm mb-2">Error al cargar el modelo</p>
             <p className="text-white/60 text-xs font-mono break-all">{errorMsg}</p>
           </div>
         </div>
