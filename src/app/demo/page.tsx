@@ -43,23 +43,23 @@ const INDUSTRIES: Industry[] = [
       "Tours volumétricos de propiedades reales. El agente captura la propiedad con su celular (Luma AI / Polycam) y Vista3D la sirve como un link que el comprador recorre desde su sala.",
     models: [
       {
-        id: "inm-apartment",
-        label: "Apartamento · Escaneo 3D Gaussian Splat",
-        category: "Inmueble · Captura real 3DGS",
-        src: "https://raw.githubusercontent.com/playcanvas/engine/main/examples/assets/splats/apartment.sog",
-        size: "SOG comprimido",
+        id: "inm-paramount",
+        label: "2508 Paramount House",
+        category: "Casa real · Captura fotogramétrica 3DGS",
+        src: "https://d28zzqy0iyovbz.cloudfront.net/91c1e47e/v1/meta.json",
+        size: "94 MB",
         description:
-          "Captura Gaussian Splat real de un apartamento interior. Cada habitación, textura y juego de luces está reconstruido fotograméticamente desde video — el comprador puede explorar el espacio como si estuviera ahí. Así es como Vista3D transforma la venta inmobiliaria.",
+          "Captura Gaussian Splat profesional de una casa real — sala, cocina, pasillos y cuartos escaneados con cámara DSLR y DJI Pocket. El comprador recorre cada habitación como si estuviera ahí. Esto es lo que Vista3D entrega a tus clientes inmobiliarios.",
         features: [
-          "Cada rincón explorable en 360°",
-          "Iluminación y texturas fotorrealistas",
-          "Sin app — abre en cualquier navegador",
-          "Link compartible en WhatsApp o portal",
+          "Casa completa explorable en 360°",
+          "Calidad DSLR — texturas y luz fotorrealistas",
+          "Sin app — funciona en cualquier navegador",
+          "Link privado compartible por WhatsApp",
         ],
-        creator: "Stéphane Agullo / SA3D",
-        license: "CC BY 4.0",
-        sourceUrl: "https://sa3d.fr",
-        sourceLabel: "Fuente: SA3D · sa3d.fr ↗",
+        creator: "@cameroncone",
+        license: "Captura propia — uso demo",
+        sourceUrl: "https://superspl.at/scene/91c1e47e",
+        sourceLabel: "Ver escena original ↗",
         tech: "Splat",
       },
     ],
@@ -210,8 +210,8 @@ const INDUSTRIES: Industry[] = [
 ];
 
 export default function DemoPage() {
-  const [industryId, setIndustryId] = useState<string>("automotriz");
-  const [modelId, setModelId] = useState<string>("auto-concept");
+  const [industryId, setIndustryId] = useState<string>("inmobiliaria");
+  const [modelId, setModelId] = useState<string>("inm-paramount");
 
   const industry = useMemo(
     () => INDUSTRIES.find((i) => i.id === industryId) ?? INDUSTRIES[0],
