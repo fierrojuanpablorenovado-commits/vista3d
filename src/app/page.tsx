@@ -191,7 +191,7 @@ export default function HomePage() {
                   ))}
                 </ul>
                 <Link
-                  href="/demo"
+                  href={plan.name === "Studio" ? "mailto:contacto@vista3d.mx" : "/registro"}
                   className={
                     "mt-6 block text-center rounded-full px-4 py-2.5 font-medium transition " +
                     (plan.highlight
