@@ -30,9 +30,9 @@ type Industry = {
   models: Model[];
 };
 
-const KHRONOS = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models";
-const khronosGlb = (name: string) => `${KHRONOS}/${name}/glTF-Binary/${name}.glb`;
-const khronosUrl = (name: string) => `https://github.khronos.org/glTF-Asset-Viewer/?assetId=${name}`;
+const CDN = "https://d28zzqy0iyovbz.cloudfront.net";
+const splatUrl = (id: string) => `${CDN}/${id}/v1/meta.json`;
+const splatSrc = (id: string) => `https://superspl.at/scene/${id}`;
 
 const INDUSTRIES: Industry[] = [
   {
@@ -40,25 +40,25 @@ const INDUSTRIES: Industry[] = [
     emoji: "🏠",
     label: "Inmobiliaria",
     pitch:
-      "Tours volumétricos de propiedades reales. El agente captura la propiedad con su celular (Luma AI / Polycam) y Vista3D la sirve como un link que el comprador recorre desde su sala.",
+      "Tours volumétricos de propiedades reales. El agente captura la propiedad con su celular y Vista3D la sirve como un link que el comprador recorre desde su sala — sin visita física.",
     models: [
       {
         id: "inm-paramount",
         label: "2508 Paramount House",
         category: "Casa real · Captura fotogramétrica 3DGS",
-        src: "https://d28zzqy0iyovbz.cloudfront.net/91c1e47e/v1/meta.json",
+        src: splatUrl("91c1e47e"),
         size: "94 MB",
         description:
-          "Captura Gaussian Splat profesional de una casa real — sala, cocina, pasillos y cuartos escaneados con cámara DSLR y DJI Pocket. El comprador recorre cada habitación como si estuviera ahí. Esto es lo que Vista3D entrega a tus clientes inmobiliarios.",
+          "Casa real escaneada con Canon 5D Mark IV + DJI Pocket — sala, cocina, pasillos y cuartos. El comprador recorre cada habitación como si estuviera ahí. Así es el tour inmobiliario del futuro.",
         features: [
           "Casa completa explorable en 360°",
           "Calidad DSLR — texturas y luz fotorrealistas",
           "Sin app — funciona en cualquier navegador",
-          "Link privado compartible por WhatsApp",
+          "Link compartible por WhatsApp o portal",
         ],
         creator: "@cameroncone",
-        license: "Captura propia — uso demo",
-        sourceUrl: "https://superspl.at/scene/91c1e47e",
+        license: "Captura pública — uso demo",
+        sourceUrl: splatSrc("91c1e47e"),
         sourceLabel: "Ver escena original ↗",
         tech: "Splat",
       },
@@ -69,21 +69,27 @@ const INDUSTRIES: Industry[] = [
     emoji: "🚗",
     label: "Automotriz",
     pitch:
-      "Inventario 360° del lote o agencia. Cada unidad rota frente al cliente como en showroom — sin moverla del piso. La agencia ya tiene los modelos 3D del fabricante o capturas propias.",
+      "Inventario 360° del lote o agencia. Cada unidad rota frente al cliente como en showroom — sin moverla del piso. Captura con DSLR, sube a Vista3D, comparte link.",
     models: [
       {
-        id: "auto-concept",
-        label: "CarConcept",
-        category: "Vehículo · Concept car PBR",
-        src: khronosGlb("CarConcept"),
-        size: "11.2 MB",
+        id: "auto-audi-f1",
+        label: "Audi F1 Race Car",
+        category: "Vehículo · Auto de carreras F1",
+        src: splatUrl("b83d5661"),
+        size: "16 MB",
         description:
-          "Concept car con paint shader profesional, variantes de material y geometría limpia. Demuestra cómo se ve un auto de fabricante exhibido en Vista3D — el cliente lo gira, hace zoom a la llanta, ve cada ángulo.",
-        features: ["Paint shader PBR", "Variantes de color", "Geometría optimizada", "Listo para web"],
-        creator: "Darmstadt Graphics Group / Eric Chadwick",
-        license: "CC BY 4.0 (Khronos sample)",
-        sourceUrl: khronosUrl("CarConcept"),
-        tech: "GLB",
+          "Auto de carreras F1 capturado como Gaussian Splat real — cada curva de la carrocería, spoiler, llantas y logos reconstruidos fotograméticamente. El cliente gira el auto 360°, hace zoom a cualquier detalle.",
+        features: [
+          "Detalle fotorrealista de carrocería",
+          "Spoilers, llantas y logos visibles",
+          "Explorable desde cualquier ángulo",
+          "16 MB — carga rápida",
+        ],
+        creator: "Captura pública SuperSplat",
+        license: "Uso demo",
+        sourceUrl: splatSrc("b83d5661"),
+        sourceLabel: "Ver escena original ↗",
+        tech: "Splat",
       },
     ],
   },
@@ -95,18 +101,24 @@ const INDUSTRIES: Industry[] = [
       "Piezas catalogadas y exhibidas digitalmente sin riesgo físico. Museos, galerías y casas de subasta exhiben patrimonio en alta resolución, 24/7, accesible globalmente.",
     models: [
       {
-        id: "art-dragon",
-        label: "Dragón de vidrio (Attenuation Demo)",
-        category: "Escultura · Vidrio traslúcido",
-        src: khronosGlb("DragonAttenuation"),
-        size: "6.1 MB",
+        id: "museo-napoleon",
+        label: "Trono de Napoleón",
+        category: "Patrimonio · Pieza de museo histórica",
+        src: splatUrl("87be70ba"),
+        size: "31 MB",
         description:
-          "Escultura de dragón en vidrio con renderizado de atenuación volumétrica realista. Muestra cómo Vista3D maneja materiales complejos — translúcidos, transparentes, refracciones — que son comunes en piezas de museo y arte contemporáneo.",
-        features: ["Material translúcido", "Atenuación volumétrica", "Renderizado PBR", "Pieza de exhibición"],
-        creator: "Morgan McGuire / NVIDIA",
-        license: "CC BY 4.0 (Khronos sample)",
-        sourceUrl: khronosUrl("DragonAttenuation"),
-        tech: "GLB",
+          "El trono de Napoleón Bonaparte capturado como Gaussian Splat — telas, dorados, tallas y detalles imperiales reconstruidos fotograméticamente. Demuestra cómo Vista3D permite exhibir piezas únicas de forma segura a una audiencia global.",
+        features: [
+          "Patrimonio histórico digitalizado",
+          "Detalle de texturas y materiales reales",
+          "Accesible 24/7 desde cualquier país",
+          "Elimina riesgo físico de la pieza",
+        ],
+        creator: "Captura pública SuperSplat",
+        license: "Uso demo",
+        sourceUrl: splatSrc("87be70ba"),
+        sourceLabel: "Ver escena original ↗",
+        tech: "Splat",
       },
     ],
   },
@@ -115,35 +127,27 @@ const INDUSTRIES: Industry[] = [
     emoji: "🛒",
     label: "E-commerce y producto",
     pitch:
-      "Productos volumétricos en la ficha de producto. El comprador rota, hace zoom y ve el detalle como si lo tuviera en la mano — antes de comprar. Reduce devoluciones, aumenta conversión.",
+      "Productos volumétricos en la ficha de venta. El comprador rota, hace zoom y ve el detalle como si lo tuviera en la mano — antes de comprar. Reduce devoluciones, aumenta conversión.",
     models: [
       {
-        id: "prod-boombox",
-        label: "BoomBox",
-        category: "Producto · Audio retro",
-        src: khronosGlb("BoomBox"),
-        size: "10.1 MB",
+        id: "ecomm-nike",
+        label: "Nike Running Shoe",
+        category: "Producto · Calzado deportivo",
+        src: splatUrl("5fc523cd"),
+        size: "9 MB",
         description:
-          "Equipo de audio portátil con detalles fotorrealistas: parlantes, perillas, etiquetas, materiales metálicos y plásticos. Es el ejemplo canónico de cómo se ve un producto premium en e-commerce 3D.",
-        features: ["Detalle fotorrealista", "Materiales mixtos", "Ideal para ficha", "Reduce devoluciones"],
-        creator: "Microsoft",
-        license: "CC BY 4.0 (Khronos sample)",
-        sourceUrl: khronosUrl("BoomBox"),
-        tech: "GLB",
-      },
-      {
-        id: "prod-bottle",
-        label: "Botella de agua",
-        category: "Producto · Etiquetado",
-        src: khronosGlb("WaterBottle"),
-        size: "8.6 MB",
-        description:
-          "Botella de agua con etiqueta legible, transparencia parcial y tapa metalizada. Caso típico de packaging que se beneficia de la vista 3D — el cliente ve la etiqueta desde cualquier ángulo.",
-        features: ["Etiqueta 360°", "Transparencia", "Empaque premium", "FMCG ready"],
-        creator: "Microsoft",
-        license: "CC BY 4.0 (Khronos sample)",
-        sourceUrl: khronosUrl("WaterBottle"),
-        tech: "GLB",
+          "Tenis Nike capturado como Gaussian Splat real — suela, tejido, logo y costuras reconstruidos fotograméticamente. El cliente ve el producto desde cualquier ángulo antes de comprarlo, como si lo tuviera en la mano.",
+        features: [
+          "Detalle fotorrealista de materiales",
+          "Suela, tejido y logo visibles al zoom",
+          "9 MB — carga en segundos",
+          "Reduce devoluciones por 'no era lo que esperaba'",
+        ],
+        creator: "Captura pública SuperSplat",
+        license: "Uso demo",
+        sourceUrl: splatSrc("5fc523cd"),
+        sourceLabel: "Ver escena original ↗",
+        tech: "Splat",
       },
     ],
   },
@@ -152,35 +156,27 @@ const INDUSTRIES: Industry[] = [
     emoji: "🛋️",
     label: "Interiorismo y decoración",
     pitch:
-      "Mobiliario y decoración exhibida en 3D. Tiendas de muebles y diseñadores muestran cada pieza en alta resolución, con materiales reales, antes de que el cliente decida comprar.",
+      "Espacios y mobiliario exhibidos en 3D. Diseñadores y tiendas de muebles muestran cada ambiente tal como quedará — el cliente recorre el espacio antes de tomar la decisión.",
     models: [
       {
-        id: "int-chair",
-        label: "Silla Damasco Púrpura y Oro",
-        category: "Mobiliario · Tapizado",
-        src: khronosGlb("ChairDamaskPurplegold"),
-        size: "1.9 MB",
+        id: "int-provence",
+        label: "Living Room · Maison Provençale",
+        category: "Interior · Sala con chimenea",
+        src: splatUrl("d7c90b1b"),
+        size: "80 MB",
         description:
-          "Silla tapizada con tela damasco morada con detalles dorados. Renderizado de tela con textura tejida visible al zoom. Caso clásico de catálogo de mobiliario de gama media-alta.",
-        features: ["Tela texturizada", "Zoom hasta hilo", "Bajo peso (~2 MB)", "Carga instantánea"],
-        creator: "Khronos / Adobe",
-        license: "CC BY 4.0 (Khronos sample)",
-        sourceUrl: khronosUrl("ChairDamaskPurplegold"),
-        tech: "GLB",
-      },
-      {
-        id: "int-lantern",
-        label: "Lámpara de aceite ornamental",
-        category: "Decoración · Iluminación",
-        src: khronosGlb("Lantern"),
-        size: "9.4 MB",
-        description:
-          "Lámpara estilo medieval con base de madera, cuerpo metálico y vidrio. Combina materiales naturales y artificiales — ideal para tiendas de decoración premium y artesanía.",
-        features: ["Materiales mixtos", "Estilo artesanal", "Vidrio + metal", "Detalle ornamental"],
-        creator: "Microsoft / Khronos",
-        license: "CC BY 4.0 (Khronos sample)",
-        sourceUrl: khronosUrl("Lantern"),
-        tech: "GLB",
+          "Sala elegante con chimenea en una maison provençal renovada — pisos de madera, muebles de época, iluminación cálida y texturas auténticas capturadas fotograméticamente. El cliente recorre el espacio como si ya viviera ahí.",
+        features: [
+          "Sala completa explorable en 360°",
+          "Chimenea, muebles y texturas reales",
+          "Iluminación natural fotorrealista",
+          "Ideal para presentar proyectos de diseño",
+        ],
+        creator: "@splatmotion3dgs",
+        license: "Captura pública — uso demo",
+        sourceUrl: splatSrc("d7c90b1b"),
+        sourceLabel: "Ver escena original ↗",
+        tech: "Splat",
       },
     ],
   },
@@ -189,21 +185,27 @@ const INDUSTRIES: Industry[] = [
     emoji: "🍽️",
     label: "Gastronomía",
     pitch:
-      "Carta digital en 3D. El comensal ve cada platillo desde todo ángulo antes de pedir — funciona en menú QR, app de delivery o catálogo de catering. Sube ticket promedio.",
+      "Carta digital en 3D y tours del restaurante. El comensal recorre el local antes de reservar, ve cada platillo en detalle — funciona en menú QR, reservaciones o catálogo de catering.",
     models: [
       {
-        id: "gastro-dish",
-        label: "Plato con aceitunas",
-        category: "Platillo · Vajilla iridiscente",
-        src: khronosGlb("IridescentDishWithOlives"),
-        size: "5.5 MB",
+        id: "gastro-hueb",
+        label: "Restaurant Hueb · Suiza",
+        category: "Restaurante · Interior real 3DGS",
+        src: splatUrl("f8747113"),
+        size: "58 MB",
         description:
-          "Plato decorado con aceitunas verdes y rojas sobre vajilla con efecto iridiscente. Muestra cómo Vista3D maneja materiales complejos (perla, vidrio reflectivo) en presentación gastronómica.",
-        features: ["Material iridiscente", "Detalle fotográfico", "Apto carta QR", "Catering & delivery"],
-        creator: "Khronos / Adobe",
-        license: "CC BY 4.0 (Khronos sample)",
-        sourceUrl: khronosUrl("IridescentDishWithOlives"),
-        tech: "GLB",
+          "Interior real del Restaurant Hueb en Suiza capturado como Gaussian Splat — mesas, decoración, iluminación y ambiente reconstruidos fotograméticamente. El cliente recorre el restaurante antes de reservar, igual que lo haría en una visita real.",
+        features: [
+          "Tour completo del restaurante en 3D",
+          "Mesas, decoración e iluminación reales",
+          "Ideal para reservaciones y eventos",
+          "Diferenciador frente a competidores sin 3D",
+        ],
+        creator: "Captura pública SuperSplat",
+        license: "Uso demo",
+        sourceUrl: splatSrc("f8747113"),
+        sourceLabel: "Ver escena original ↗",
+        tech: "Splat",
       },
     ],
   },
@@ -211,7 +213,7 @@ const INDUSTRIES: Industry[] = [
 
 export default function DemoPage() {
   const [industryId, setIndustryId] = useState<string>("inmobiliaria");
-  const [modelId, setModelId] = useState<string>("inm-paramount");
+  const [modelId, setModelId] = useState<string>("inm-paramount"); // default: house splat
 
   const industry = useMemo(
     () => INDUSTRIES.find((i) => i.id === industryId) ?? INDUSTRIES[0],
