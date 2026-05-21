@@ -125,26 +125,22 @@ export default function DemoPage() {
             />
           </div>
 
-          {/* Photo cover — fades out when splat is ready */}
+          {/* Photo cover — always black fallback, fades out when splat is ready */}
           <div
-            className={
-              "absolute inset-0 transition-opacity duration-1000 pointer-events-none " +
-              (photoVisible ? "opacity-100" : "opacity-0")
-            }
+            className="absolute inset-0 bg-black bg-cover bg-center transition-opacity duration-[1200ms] pointer-events-none"
+            style={{
+              backgroundImage: `url(${industry.image})`,
+              opacity: photoVisible ? 1 : 0,
+            }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={industry.image}
-              alt={industry.label}
-              className="w-full h-full object-cover"
-            />
-            {/* Loading indicator — only show while photo is visible */}
-            {photoVisible && (
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-xs text-white/60 font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                Cargando escena 3D…
-              </div>
-            )}
+            {/* Loading indicator */}
+            <div
+              className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-xs text-white/60 font-mono transition-opacity duration-500"
+              style={{ opacity: photoVisible ? 1 : 0 }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+              Cargando escena 3D…
+            </div>
           </div>
 
           {/* Back to home */}
