@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import SplatViewerClient from "@/components/splat-viewer-client";
 import Header from "@/components/header";
@@ -63,26 +63,27 @@ const INDUSTRIES: Industry[] = [
   },
 ];
 
+// Delay before mounting the WebGL canvas (ms).
+// During this window the photo is shown and the browser pre-fetches the asset.
+const SPLAT_DELAY_MS = 2500;
+
 export default function DemoPage() {
   const [industryId, setIndustryId] = useState<string>("inmobiliaria");
-  // photoVisible = true  → photo covers the splat (loading state)
-  // photoVisible = false → photo fades out, splat is revealed
-  const [photoVisible, setPhotoVisible] = useState(true);
+  // splatMounted: true → canvas is in the DOM (showing loading state or 3D)
+  // splatMounted: false → NO canvas in DOM (photo shows without conflict)
+  const [splatMounted, setSplatMounted] = useState(false);
 
   const industry = useMemo(
     () => INDUSTRIES.find((i) => i.id === industryId) ?? INDUSTRIES[0],
     [industryId]
   );
 
-  // When tab changes: show photo again while new splat loads
+  // On tab change: unmount canvas → show photo → re-mount canvas after delay
   useEffect(() => {
-    setPhotoVisible(true);
+    setSplatMounted(false);
+    const t = setTimeout(() => setSplatMounted(true), SPLAT_DELAY_MS);
+    return () => clearTimeout(t);
   }, [industryId]);
-
-  // Called by SplatViewer when splat has loaded + settled
-  const handleSplatReady = useCallback(() => {
-    setPhotoVisible(false);
-  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -113,34 +114,31 @@ export default function DemoPage() {
           </div>
         </div>
 
-        {/* Viewer — splat always mounted, photo fades out on top */}
-        <div className="flex-1 relative overflow-hidden">
+        {/* Viewer */}
+        <div className="flex-1 relative overflow-hidden bg-black">
 
-          {/* 3D splat — always loading in background */}
-          <div className="absolute inset-0">
-            <SplatViewerClient
-              key={industry.id}
-              src={industry.splatSrc}
-              onReady={handleSplatReady}
-            />
-          </div>
-
-          {/* Photo cover — canvas is visibility:hidden while loading so this div
-              doesn't need to fight WebGL's hardware overlay compositing */}
-          <div
-            className="absolute inset-0 bg-black bg-cover bg-center pointer-events-none"
-            style={{
-              backgroundImage: `url(${industry.image})`,
-              opacity: photoVisible ? 1 : 0,
-              transition: "opacity 1.2s ease-in-out",
-            }}
-          >
-            {/* Loading indicator */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-xs text-white/60 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-              Cargando escena 3D…
+          {/* Photo — shown while canvas is NOT mounted (no WebGL conflict) */}
+          {!splatMounted && (
+            <div
+              className="absolute inset-0 bg-black bg-cover bg-center"
+              style={{ backgroundImage: `url(${industry.image})` }}
+            >
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-xs text-white/60 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                Cargando escena 3D…
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* 3D splat — mounts after delay, replaces photo entirely */}
+          {splatMounted && (
+            <div className="absolute inset-0">
+              <SplatViewerClient
+                key={industry.id}
+                src={industry.splatSrc}
+              />
+            </div>
+          )}
 
           {/* Back to home */}
           <Link
