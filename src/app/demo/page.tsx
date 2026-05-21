@@ -125,12 +125,15 @@ export default function DemoPage() {
             />
           </div>
 
-          {/* Photo cover — always black fallback, fades out when splat is ready */}
+          {/* Photo cover — z-20 to sit above WebGL canvas compositing layer */}
           <div
-            className="absolute inset-0 bg-black bg-cover bg-center transition-opacity duration-[1200ms] pointer-events-none"
+            className="absolute inset-0 bg-black bg-cover bg-center pointer-events-none"
             style={{
               backgroundImage: `url(${industry.image})`,
               opacity: photoVisible ? 1 : 0,
+              transition: "opacity 1.2s ease-in-out",
+              zIndex: 20,
+              willChange: "opacity",
             }}
           >
             {/* Loading indicator */}
@@ -146,7 +149,7 @@ export default function DemoPage() {
           {/* Back to home */}
           <Link
             href="/"
-            className="absolute bottom-4 right-4 z-10 text-xs text-white/40 hover:text-white/80 transition bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5"
+            className="absolute bottom-4 right-4 z-30 text-xs text-white/40 hover:text-white/80 transition bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5"
           >
             ← Inicio
           </Link>
