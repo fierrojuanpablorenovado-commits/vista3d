@@ -15,3 +15,5 @@ const SplatViewer = dynamic(() => import("./splat-viewer"), {
 export default function SplatViewerClient(props: SplatViewerProps) {
   return <SplatViewer {...props} />;
 }
+
+export type { SplatViewerProps };

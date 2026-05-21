@@ -12,6 +12,8 @@ export type SplatViewerProps = {
   splatRotation?: [number, number, number];
   /** Optional fixed initial camera position. When omitted, camera auto-frames the model AABB. */
   cameraStart?: { position: [number, number, number]; lookAt: [number, number, number] };
+  /** Called after splat finishes loading and has had time to settle visually (~1.5s). */
+  onReady?: () => void;
 };
 
 const DEFAULT_CLEAR: [number, number, number] = [0.04, 0.04, 0.04];
@@ -30,6 +32,7 @@ export default function SplatViewer({
   clearColor: clearColorProp,
   splatRotation,
   cameraStart,
+  onReady,
 }: SplatViewerProps) {
   const clearColor = clearColorProp ?? DEFAULT_CLEAR;
   const splatRotationStr = splatRotation ? splatRotation.join(",") : "";
@@ -255,6 +258,10 @@ export default function SplatViewer({
                 }
               }
               setLoaded(true);
+              // Give splat ~1.5s to sort and settle before signalling ready
+              setTimeout(() => {
+                if (!cancelled) onReady?.();
+              }, 1500);
             });
           });
         });
