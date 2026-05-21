@@ -309,7 +309,14 @@ export default function SplatViewer({
       <canvas
         ref={canvasRef}
         className="pc-app"
-        style={{ width: "100%", height: "100%", display: "block" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+          // Keep canvas invisible until fully loaded — prevents WebGL hardware-overlay
+          // from punching through CSS overlays (Direct Composition / Chrome on Windows)
+          visibility: loaded ? "visible" : "hidden",
+        }}
       />
 
       {!loaded && !errorMsg && (

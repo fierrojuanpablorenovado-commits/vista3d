@@ -125,22 +125,18 @@ export default function DemoPage() {
             />
           </div>
 
-          {/* Photo cover — z-20 to sit above WebGL canvas compositing layer */}
+          {/* Photo cover — canvas is visibility:hidden while loading so this div
+              doesn't need to fight WebGL's hardware overlay compositing */}
           <div
             className="absolute inset-0 bg-black bg-cover bg-center pointer-events-none"
             style={{
               backgroundImage: `url(${industry.image})`,
               opacity: photoVisible ? 1 : 0,
               transition: "opacity 1.2s ease-in-out",
-              zIndex: 20,
-              willChange: "opacity",
             }}
           >
             {/* Loading indicator */}
-            <div
-              className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-xs text-white/60 font-mono transition-opacity duration-500"
-              style={{ opacity: photoVisible ? 1 : 0 }}
-            >
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-xs text-white/60 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
               Cargando escena 3D…
             </div>
