@@ -257,8 +257,13 @@ export default function SplatViewer({
                   ctrl.focusPoint = center.clone();
                 }
               }
-              setLoaded(true);
-              // Give splat ~1.5s to sort and settle before signalling ready
+              // Start rendering ONLY after asset is fully in place.
+              // This prevents the particle-explosion phase that occurs when
+              // PlayCanvas renders a splat before depth-sort has converged.
+              if (!cancelled) {
+                app!.start();
+                setLoaded(true);
+              }
               setTimeout(() => {
                 if (!cancelled) onReady?.();
               }, 1500);
@@ -280,7 +285,7 @@ export default function SplatViewer({
         resizeObserver.observe(container);
         window.addEventListener("resize", resize);
 
-        app.start();
+        // NOTE: app.start() is called inside asset.ready() — not here.
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setErrorMsg(msg);
@@ -313,7 +318,7 @@ export default function SplatViewer({
       />
 
       {!loaded && !errorMsg && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black pointer-events-none">
           <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-violet-500 to-orange-400 transition-all duration-200"
