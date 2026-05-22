@@ -258,15 +258,17 @@ export default function SplatViewer({
                 }
               }
               // Start rendering ONLY after asset is fully in place.
-              // This prevents the particle-explosion phase that occurs when
-              // PlayCanvas renders a splat before depth-sort has converged.
+              // Then wait ~2.5 s for depth-sort to converge before revealing.
+              // This prevents the particle-explosion phase.
               if (!cancelled) {
                 app!.start();
-                setLoaded(true);
+                setTimeout(() => {
+                  if (!cancelled) {
+                    setLoaded(true);
+                    onReady?.();
+                  }
+                }, 2500);
               }
-              setTimeout(() => {
-                if (!cancelled) onReady?.();
-              }, 1500);
             });
           });
         });

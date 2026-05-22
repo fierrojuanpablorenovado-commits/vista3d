@@ -63,26 +63,19 @@ const INDUSTRIES: Industry[] = [
   },
 ];
 
-// Delay before mounting the WebGL canvas (ms).
-// During this window the photo is shown and the browser pre-fetches the asset.
-const SPLAT_DELAY_MS = 2500;
-
 export default function DemoPage() {
   const [industryId, setIndustryId] = useState<string>("inmobiliaria");
-  // splatMounted: true → canvas is in the DOM (showing loading state or 3D)
-  // splatMounted: false → NO canvas in DOM (photo shows without conflict)
-  const [splatMounted, setSplatMounted] = useState(false);
+  // splatReady: true → sort converged, 3D is clean and visible
+  const [splatReady, setSplatReady] = useState(false);
 
   const industry = useMemo(
     () => INDUSTRIES.find((i) => i.id === industryId) ?? INDUSTRIES[0],
     [industryId]
   );
 
-  // On tab change: unmount canvas → show photo → re-mount canvas after delay
+  // On tab change: reset readiness so photo shows again
   useEffect(() => {
-    setSplatMounted(false);
-    const t = setTimeout(() => setSplatMounted(true), SPLAT_DELAY_MS);
-    return () => clearTimeout(t);
+    setSplatReady(false);
   }, [industryId]);
 
   return (
@@ -117,26 +110,37 @@ export default function DemoPage() {
         {/* Viewer */}
         <div className="flex-1 relative overflow-hidden bg-black">
 
-          {/* Photo — shown while canvas is NOT mounted (no WebGL conflict) */}
-          {!splatMounted && (
+          {/* Canvas: always mounted immediately so download starts right away.
+              opacity 0.001 while not ready → practically invisible, prevents
+              Chrome from promoting it to a GPU hardware overlay (which would
+              punch through any CSS z-index), while still letting WebGL render
+              and the depth-sort worker run in the background. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: splatReady ? 1 : 0.001,
+              pointerEvents: splatReady ? "auto" : "none",
+            }}
+          >
+            <SplatViewerClient
+              key={industry.id}
+              src={industry.splatSrc}
+              onReady={() => setSplatReady(true)}
+            />
+          </div>
+
+          {/* Photo: stays on top while 3D is not ready.
+              Disappears the moment onReady fires (same React render batch as
+              opacity→1 on the canvas wrapper → no visible overlap). */}
+          {!splatReady && (
             <div
-              className="absolute inset-0 bg-black bg-cover bg-center"
+              className="absolute inset-0 z-10 bg-cover bg-center"
               style={{ backgroundImage: `url(${industry.image})` }}
             >
               <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-xs text-white/60 font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
                 Cargando escena 3D…
               </div>
-            </div>
-          )}
-
-          {/* 3D splat — mounts after delay, replaces photo entirely */}
-          {splatMounted && (
-            <div className="absolute inset-0">
-              <SplatViewerClient
-                key={industry.id}
-                src={industry.splatSrc}
-              />
             </div>
           )}
 
