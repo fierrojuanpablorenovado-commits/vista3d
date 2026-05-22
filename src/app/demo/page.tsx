@@ -65,7 +65,7 @@ const INDUSTRIES: Industry[] = [
 
 export default function DemoPage() {
   const [industryId, setIndustryId] = useState<string>("inmobiliaria");
-  // splatReady: true → sort converged, 3D is clean and visible
+  // true once the splat depth-sort has converged and the first clean frame rendered
   const [splatReady, setSplatReady] = useState(false);
 
   const industry = useMemo(
@@ -73,7 +73,7 @@ export default function DemoPage() {
     [industryId]
   );
 
-  // On tab change: reset readiness so photo shows again
+  // Reset on tab change so photo shows again while new splat loads
   useEffect(() => {
     setSplatReady(false);
   }, [industryId]);
@@ -110,11 +110,10 @@ export default function DemoPage() {
         {/* Viewer */}
         <div className="flex-1 relative overflow-hidden bg-black">
 
-          {/* Canvas: always mounted immediately so download starts right away.
-              opacity 0.001 while not ready → practically invisible, prevents
-              Chrome from promoting it to a GPU hardware overlay (which would
-              punch through any CSS z-index), while still letting WebGL render
-              and the depth-sort worker run in the background. */}
+          {/* 3D canvas — always mounted so download starts immediately.
+              While autoRender=false the WebGL backbuffer stays transparent
+              (alpha:true context) so no GPU overlay is created and the photo
+              below is fully visible via normal CSS z-index. */}
           <div
             className="absolute inset-0"
             style={{ pointerEvents: splatReady ? "auto" : "none" }}
@@ -126,9 +125,9 @@ export default function DemoPage() {
             />
           </div>
 
-          {/* Photo: stays on top while 3D is not ready.
-              Disappears the moment onReady fires (same React render batch as
-              opacity→1 on the canvas wrapper → no visible overlap). */}
+          {/* Photo cover — sits above the canvas (z-10) while the splat loads
+              and sorts. Removed in the same React render batch as the canvas
+              becomes visible, so there is no one-frame overlap. */}
           {!splatReady && (
             <div
               className="absolute inset-0 z-10 bg-cover bg-center"
@@ -141,7 +140,6 @@ export default function DemoPage() {
             </div>
           )}
 
-          {/* Back to home */}
           <Link
             href="/"
             className="absolute bottom-4 right-4 z-30 text-xs text-white/40 hover:text-white/80 transition bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5"

@@ -8,11 +8,9 @@ export type SplatViewerProps = {
   src: string;
   className?: string;
   clearColor?: [number, number, number];
-  /** Rotation (euler degrees) applied to the loaded asset. Real-world splats often need a 180° Z flip. */
   splatRotation?: [number, number, number];
-  /** Optional fixed initial camera position. When omitted, camera auto-frames the model AABB. */
   cameraStart?: { position: [number, number, number]; lookAt: [number, number, number] };
-  /** Called after splat finishes loading and has had time to settle visually (~1.5s). */
+  /** Called once the splat is fully sorted and the first clean frame has rendered. */
   onReady?: () => void;
 };
 
@@ -57,9 +55,14 @@ export default function SplatViewer({
 
     (async () => {
       try {
+        // alpha:true → WebGL context is transparent while nothing has been rendered.
+        // A transparent (unrendered) canvas is NOT promoted to a Direct Composition
+        // hardware overlay by Chrome, so normal CSS z-index works and the photo
+        // cover in the parent can show through until the 3D is ready.
         const device = await pc.createGraphicsDevice(canvas, {
           deviceTypes: [pc.DEVICETYPE_WEBGL2],
           antialias: false,
+          alpha: true,
         });
         if (cancelled) {
           device.destroy();
@@ -109,7 +112,7 @@ export default function SplatViewer({
         cameraEntity.lookAt(0, 0, 0);
         app.root.addChild(cameraEntity);
 
-        // ---- Lighting (only needed for GLB / mesh content; gsplats carry their own color) ----
+        // ---- Lighting (GLB only) ----
         if (kind === "container") {
           const keyLight = new pc.Entity("key-light");
           keyLight.addComponent("light", {
@@ -145,11 +148,10 @@ export default function SplatViewer({
           ambient.setLocalEulerAngles(-90, 0, 0);
           app.root.addChild(ambient);
 
-          // Scene background ambient
           app.scene.ambientLight = new pc.Color(0.2, 0.22, 0.28);
         }
 
-        // ---- Camera controls (orbit + fly) ----
+        // ---- Camera controls ----
         cameraEntity.addComponent("script");
         const scriptComp = cameraEntity.script as pc.ScriptComponent;
         const ctrl = scriptComp.create(CameraControls) as unknown as {
@@ -179,7 +181,6 @@ export default function SplatViewer({
           const node = new pc.Entity(kind === "container" ? "model" : "splat");
 
           if (kind === "container") {
-            // Instantiate model hierarchy from GLB
             const container = asset.resource as pc.ContainerResource;
             const modelEntity = container.instantiateRenderEntity();
             node.addChild(modelEntity);
@@ -194,80 +195,75 @@ export default function SplatViewer({
 
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              // Compute AABB for framing
+              if (!app || cancelled) return;
+
+              // ---- Camera framing ----
               let aabb: pc.BoundingBox | null = null;
               if (kind === "gsplat") {
                 const gsplatComp = (node as unknown as { gsplat?: { instance?: { meshInstance?: { aabb: pc.BoundingBox } } } }).gsplat;
                 aabb = gsplatComp?.instance?.meshInstance?.aabb ?? null;
               } else {
-                // Aggregate AABB across all render mesh instances
                 const renders: pc.RenderComponent[] = node.findComponents("render") as pc.RenderComponent[];
                 renders.forEach((r) => {
                   r.meshInstances?.forEach((mi) => {
-                    if (!aabb) {
-                      aabb = mi.aabb.clone();
-                    } else {
-                      aabb.add(mi.aabb);
-                    }
+                    if (!aabb) aabb = mi.aabb.clone();
+                    else aabb!.add(mi.aabb);
                   });
                 });
               }
 
               if (cameraStart) {
-                cameraEntity.setPosition(
-                  cameraStart.position[0],
-                  cameraStart.position[1],
-                  cameraStart.position[2]
-                );
-                cameraEntity.lookAt(
-                  cameraStart.lookAt[0],
-                  cameraStart.lookAt[1],
-                  cameraStart.lookAt[2]
-                );
+                cameraEntity.setPosition(cameraStart.position[0], cameraStart.position[1], cameraStart.position[2]);
+                cameraEntity.lookAt(cameraStart.lookAt[0], cameraStart.lookAt[1], cameraStart.lookAt[2]);
                 const cam = cameraEntity.camera;
                 if (cam && aabb) {
                   const radius = (aabb as pc.BoundingBox).halfExtents.length();
                   cam.nearClip = Math.max(radius * 0.001, 0.001);
                   cam.farClip = Math.max(radius * 50, 100);
                 }
-                if (ctrl) {
-                  ctrl.focusPoint = new pc.Vec3(
-                    cameraStart.lookAt[0],
-                    cameraStart.lookAt[1],
-                    cameraStart.lookAt[2]
-                  );
-                }
+                if (ctrl) ctrl.focusPoint = new pc.Vec3(cameraStart.lookAt[0], cameraStart.lookAt[1], cameraStart.lookAt[2]);
               } else if (aabb) {
                 const a = aabb as pc.BoundingBox;
                 const center = a.center;
                 const radius = a.halfExtents.length();
                 const dist = Math.max(radius * 1.6, 0.5);
-                cameraEntity.setPosition(
-                  center.x + dist * 0.6,
-                  center.y + dist * 0.3,
-                  center.z + dist * 0.6
-                );
+                cameraEntity.setPosition(center.x + dist * 0.6, center.y + dist * 0.3, center.z + dist * 0.6);
                 cameraEntity.lookAt(center);
                 const cam = cameraEntity.camera;
                 if (cam) {
                   cam.nearClip = Math.max(radius * 0.001, 0.001);
                   cam.farClip = Math.max(radius * 50, 100);
                 }
-                if (ctrl) {
-                  ctrl.focusPoint = center.clone();
-                }
+                if (ctrl) ctrl.focusPoint = center.clone();
               }
-              // Start rendering ONLY after asset is fully in place.
-              // Then wait ~2.5 s for depth-sort to converge before revealing.
-              // This prevents the particle-explosion phase.
+
+              // ── KEY FIX ──────────────────────────────────────────────────
+              // 1. Disable rendering BEFORE app.start() so the first tick's
+              //    render() call is skipped. The update loop (which runs the
+              //    depth-sort worker) still fires every frame.
+              // 2. Canvas context has alpha:true so while autoRender=false the
+              //    backbuffer stays transparent → no Direct Composition hardware
+              //    overlay → the photo cover in the parent is fully visible.
+              // 3. After 1500 ms the sort has converged. We re-enable rendering,
+              //    wait one more frame for the clean first frame to land, then
+              //    call setLoaded + onReady together (React 18 auto-batches them
+              //    so photo removal and canvas reveal happen in one paint).
+              // ─────────────────────────────────────────────────────────────
               if (!cancelled) {
+                app!.autoRender = false;   // must be BEFORE start()
                 app!.start();
+
                 setTimeout(() => {
                   if (!cancelled) {
-                    setLoaded(true);
-                    onReady?.();
+                    app!.autoRender = true;
+                    requestAnimationFrame(() => {
+                      if (!cancelled) {
+                        setLoaded(true);
+                        onReady?.();
+                      }
+                    });
                   }
-                }, 2500);
+                }, 1500);
               }
             });
           });
@@ -287,7 +283,6 @@ export default function SplatViewer({
         resizeObserver.observe(container);
         window.addEventListener("resize", resize);
 
-        // NOTE: app.start() is called inside asset.ready() — not here.
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setErrorMsg(msg);
@@ -298,11 +293,7 @@ export default function SplatViewer({
       cancelled = true;
       resizeObserver?.disconnect();
       if (app) {
-        try {
-          app.destroy();
-        } catch {
-          /* ignore */
-        }
+        try { app.destroy(); } catch { /* ignore */ }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,17 +302,17 @@ export default function SplatViewer({
   return (
     <div
       ref={containerRef}
-      className={"relative w-full h-full bg-black " + (className ?? "")}
+      className={"relative w-full h-full " + (className ?? "")}
     >
-      {/* visibility:hidden (not display:none) keeps GPU rendering + sort worker
-          running while preventing Chrome from promoting the canvas to a Direct
-          Composition hardware overlay. The overlay only exists when visible. */}
       <canvas
         ref={canvasRef}
         className="pc-app"
-        style={{ width: "100%", height: "100%", display: "block", visibility: loaded ? "visible" : "hidden" }}
+        style={{ width: "100%", height: "100%", display: "block" }}
       />
 
+      {/* Loading overlay — visible while canvas is transparent (autoRender=false).
+          Covered by the photo overlay in the parent; shown as fallback if parent
+          doesn't supply a photo. */}
       {!loaded && !errorMsg && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black pointer-events-none">
           <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
