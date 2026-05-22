@@ -1,18 +1,10 @@
-import { auth } from "@/lib/auth";
-import { NextResponse } from "next/server";
+// Middleware runs on Edge Runtime — must NOT import Node.js modules.
+// Uses a lightweight auth config (no bcrypt, no DB) for JWT verification only.
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth;
-  const isDashboard = req.nextUrl.pathname.startsWith("/dashboard");
-
-  if (isDashboard && !isLoggedIn) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return NextResponse.next();
-});
+export const { auth: middleware } = NextAuth(authConfig);
+export default middleware;
 
 export const config = {
   matcher: ["/dashboard/:path*"],
