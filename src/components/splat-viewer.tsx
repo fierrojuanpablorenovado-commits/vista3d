@@ -22,6 +22,12 @@ const detectKind = (src: string): AssetKind => {
   return "gsplat";
 };
 
+// Convergence settings
+const AABB_POLL_MS = 50;
+const AABB_TIMEOUT_MS = 5000;          // give up reading AABB after 5s
+const SORT_UPDATES_REQUIRED = 4;       // listen for N sort completions after camera framing
+const SORT_TIMEOUT_FALLBACK_MS = 8000; // hard cap: reveal after 8s even if sorter never reports
+
 export default function SplatViewer({
   src,
   className,
@@ -50,7 +56,8 @@ export default function SplatViewer({
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
-    let sortTimer: ReturnType<typeof setTimeout> | null = null;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    let revealed = false;
     const kind = detectKind(src);
 
     (async () => {
@@ -102,7 +109,7 @@ export default function SplatViewer({
           farClip: 100000,
           toneMapping: pc.TONEMAP_ACES,
         });
-        cameraEntity.setLocalPosition(0, 0, 30); // far enough to not be inside any scene
+        cameraEntity.setLocalPosition(0, 0, 30);
         cameraEntity.lookAt(0, 0, 0);
         app.root.addChild(cameraEntity);
 
@@ -140,6 +147,24 @@ export default function SplatViewer({
         asset.on("error", (err: string) => setErrorMsg(err));
         app.assets.add(asset);
 
+        // Unified reveal — called when we're sure sort has converged
+        const reveal = () => {
+          if (revealed || cancelled || !app) return;
+          revealed = true;
+          if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+          if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
+          app.autoRender = true;
+          // Two rAFs: 1st triggers render w/ new sorted texture, 2nd ensures it's on screen
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (!cancelled) {
+                setLoaded(true);
+                onReady?.();
+              }
+            });
+          });
+        };
+
         asset.ready(() => {
           if (!app || cancelled) return;
 
@@ -153,26 +178,51 @@ export default function SplatViewer({
           if (splatRotation) {
             node.setLocalEulerAngles(splatRotation[0], splatRotation[1], splatRotation[2]);
           }
-          app.root.addChild(node);
+          app!.root.addChild(node);
 
-          // ── KEY FIX ─────────────────────────────────────────────────────
-          // Step 1: Disable render BEFORE start() so zero frames are drawn
-          //         while we wait for AABB + sort convergence.
-          // Step 2: Start the app — update loop runs (sort worker fires),
-          //         but no visual output (canvas stays transparent → no overlay).
-          // Step 3: Poll until the GSplat AABB is computed (happens after the
-          //         first update tick, typically ~50ms).
-          // Step 4: Frame camera using the real AABB.
-          // Step 5: Wait 2 s from AABB ready so sort has fully converged.
-          // Step 6: Enable render → first frame = clean sorted 3D → reveal.
-          // ────────────────────────────────────────────────────────────────
-          app!.autoRender = false;
+          // KEY: keep autoRender=true so the GSplat sorter actually runs to
+          // completion (sort applies its result during the render pipeline).
+          // The photo cover in the parent (z-10) hides the canvas until reveal.
+          // alpha:true backbuffer = no Direct Composition overlay = z-index works.
+          app!.autoRender = true;
           app!.start();
 
+          // Hard cap: reveal after 8s no matter what
+          fallbackTimer = setTimeout(reveal, SORT_TIMEOUT_FALLBACK_MS);
+
           let pollTicks = 0;
+          let cameraFramed = false;
+          let sortUpdates = 0;
+          let sorterAttached = false;
+
+          // Try to attach sorter listener — fires when worker finishes a sort pass
+          const tryAttachSorter = () => {
+            if (sorterAttached || kind !== "gsplat") return;
+            const sorter = (node as unknown as {
+              gsplat?: { instance?: { sorter?: { on?: (e: string, cb: () => void) => void } } };
+            }).gsplat?.instance?.sorter;
+            if (sorter && typeof sorter.on === "function") {
+              sorterAttached = true;
+              sorter.on("updated", () => {
+                sortUpdates++;
+                // Wait until camera is framed AND we've seen N sort passes.
+                // Each pass means the worker re-sorted with current camera pos,
+                // so N+ passes = sort is fully converged for this view.
+                if (cameraFramed && sortUpdates >= SORT_UPDATES_REQUIRED) {
+                  reveal();
+                }
+              });
+            }
+          };
+
           pollInterval = setInterval(() => {
             if (cancelled || !app) { clearInterval(pollInterval!); return; }
             pollTicks++;
+
+            // Always try to attach sorter (it might init a few ticks after start)
+            tryAttachSorter();
+
+            if (cameraFramed) return; // sorter listener handles reveal from here
 
             let aabb: pc.BoundingBox | null = null;
             if (kind === "gsplat") {
@@ -191,14 +241,10 @@ export default function SplatViewer({
               });
             }
 
-            // Give up polling after 2 s; use safe defaults if AABB never arrives
-            const timedOut = pollTicks > 40;
-            if (!aabb && !timedOut) return; // not ready yet
+            const timedOut = pollTicks * AABB_POLL_MS >= AABB_TIMEOUT_MS;
+            if (!aabb && !timedOut) return;
 
-            clearInterval(pollInterval!);
-            pollInterval = null;
-
-            // ---- Frame camera ----
+            // ---- Frame camera (resets sort updates counter for this view) ----
             if (cameraStart) {
               cameraEntity.setPosition(cameraStart.position[0], cameraStart.position[1], cameraStart.position[2]);
               cameraEntity.lookAt(cameraStart.lookAt[0], cameraStart.lookAt[1], cameraStart.lookAt[2]);
@@ -217,19 +263,17 @@ export default function SplatViewer({
               }
               if (ctrl) ctrl.focusPoint = center.clone();
             }
+            cameraFramed = true;
+            sortUpdates = 0; // reset counter — only count sorts from THIS camera position
 
-            // ---- Wait for sort to fully converge, then reveal ----
-            sortTimer = setTimeout(() => {
-              if (cancelled || !app) return;
-              app!.autoRender = true;
-              requestAnimationFrame(() => {
-                if (!cancelled) {
-                  setLoaded(true);
-                  onReady?.();
-                }
-              });
-            }, 2000); // 2 s after AABB ready = sort fully settled
-          }, 50); // poll every 50 ms
+            // For container assets there's no sorter; just reveal shortly
+            if (kind === "container") {
+              setTimeout(reveal, 200);
+              return;
+            }
+
+            // If sorter never attaches (older PlayCanvas?), fallbackTimer will fire
+          }, AABB_POLL_MS);
         });
 
         app.assets.load(asset);
@@ -255,7 +299,7 @@ export default function SplatViewer({
     return () => {
       cancelled = true;
       if (pollInterval) clearInterval(pollInterval);
-      if (sortTimer) clearTimeout(sortTimer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
       resizeObserver?.disconnect();
       if (app) { try { app.destroy(); } catch { /* ignore */ } }
     };
