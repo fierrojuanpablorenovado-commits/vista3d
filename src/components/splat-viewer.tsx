@@ -55,15 +55,18 @@ export default function SplatViewer({
 
     (async () => {
       try {
-        // alpha:true → WebGL context is transparent while nothing has been rendered.
-        // A transparent (unrendered) canvas is NOT promoted to a Direct Composition
+        // alpha:true → WebGL context is transparent while autoRender=false.
+        // A transparent/unrendered canvas is NOT promoted to a Direct Composition
         // hardware overlay by Chrome, so normal CSS z-index works and the photo
         // cover in the parent can show through until the 3D is ready.
-        const device = await pc.createGraphicsDevice(canvas, {
-          deviceTypes: [pc.DEVICETYPE_WEBGL2],
-          antialias: false,
-          alpha: true,
-        });
+        // PlayCanvas runtime supports alpha but the TS type definition omits it,
+        // so we merge it in at runtime via Object.assign.
+        const device = await pc.createGraphicsDevice(canvas,
+          Object.assign(
+            { deviceTypes: [pc.DEVICETYPE_WEBGL2], antialias: false },
+            { alpha: true }
+          ) as Parameters<typeof pc.createGraphicsDevice>[1]
+        );
         if (cancelled) {
           device.destroy();
           return;
