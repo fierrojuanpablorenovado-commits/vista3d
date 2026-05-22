@@ -117,10 +117,7 @@ export default function DemoPage() {
               and the depth-sort worker run in the background. */}
           <div
             className="absolute inset-0"
-            style={{
-              opacity: splatReady ? 1 : 0.001,
-              pointerEvents: splatReady ? "auto" : "none",
-            }}
+            style={{ pointerEvents: splatReady ? "auto" : "none" }}
           >
             <SplatViewerClient
               key={industry.id}

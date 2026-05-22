@@ -313,10 +313,13 @@ export default function SplatViewer({
       ref={containerRef}
       className={"relative w-full h-full bg-black " + (className ?? "")}
     >
+      {/* visibility:hidden (not display:none) keeps GPU rendering + sort worker
+          running while preventing Chrome from promoting the canvas to a Direct
+          Composition hardware overlay. The overlay only exists when visible. */}
       <canvas
         ref={canvasRef}
         className="pc-app"
-        style={{ width: "100%", height: "100%", display: "block" }}
+        style={{ width: "100%", height: "100%", display: "block", visibility: loaded ? "visible" : "hidden" }}
       />
 
       {!loaded && !errorMsg && (
