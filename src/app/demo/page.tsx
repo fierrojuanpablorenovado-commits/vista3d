@@ -13,8 +13,10 @@ type Industry = {
 
 // Official PlayCanvas / SuperSplat hosted viewer.
 // Handles depth-sort convergence, camera framing, controls — production-grade.
+// Clean viewer URL — just the 3D canvas, no SuperSplat marketplace UI.
+// This is the same iframe src that SuperSplat's own scene page uses internally.
 const viewerUrl = (sceneId: string) =>
-  `https://superspl.at/scene/${sceneId}?noui=1`;
+  `https://superspl.at/s?id=${sceneId}`;
 
 const INDUSTRIES: Industry[] = [
   { id: "inmobiliaria", emoji: "🏠", label: "Inmobiliaria", sceneId: "91c1e47e" },
