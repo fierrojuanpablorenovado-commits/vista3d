@@ -256,6 +256,9 @@ export default function SplatViewer({
                 app!.autoRender = false;   // must be BEFORE start()
                 app!.start();
 
+                // 3 s gives the depth-sort worker ample time to converge even
+                // for large splats (7M+ points). The photo cover in the parent
+                // keeps the user occupied during this wait.
                 setTimeout(() => {
                   if (!cancelled) {
                     app!.autoRender = true;
@@ -266,7 +269,7 @@ export default function SplatViewer({
                       }
                     });
                   }
-                }, 1500);
+                }, 3000);
               }
             });
           });
